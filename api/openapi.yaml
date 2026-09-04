@@ -1,0 +1,358 @@
+openapi: 3.0.3
+info:
+  title: Our Sell API
+  version: 1.0.0
+  description: |
+    Secure, versioned authentication and session-management API. Refresh
+    tokens are opaque, rotated, and stored only as SHA-256 hashes on the server.
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        '200':
+          description: Process is alive.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+  /ready:
+    get:
+      operationId: readiness
+      responses:
+        '200': { description: Required dependencies are ready. }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/Register' }
+      responses:
+        '201': { $ref: '#/components/responses/UserCreated' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/Login' }
+      responses:
+        '200': { $ref: '#/components/responses/Login' }
+        '401': { $ref: '#/components/responses/InvalidCredentials' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/auth/refresh:
+    post:
+      operationId: refresh
+      description: Reads the HttpOnly refresh_token cookie. A JSON refresh_token body is accepted for non-browser clients.
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/Refresh' }
+      responses:
+        '200': { $ref: '#/components/responses/Login' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/logout-all:
+    post:
+      operationId: logoutAll
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/Email' }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/auth/reset-password:
+    post:
+      operationId: resetPassword
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/ResetPassword' }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/verify-email:
+    post:
+      operationId: verifyEmail
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/Token' }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/resend-verification:
+    post:
+      operationId: resendVerification
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/Email' }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/auth/change-password:
+    post:
+      operationId: changePassword
+      security: [{ bearerAuth: [] }]
+      requestBody: { $ref: '#/components/requestBodies/ChangePassword' }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/me:
+    get:
+      operationId: authMe
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/me/sessions:
+    get:
+      operationId: listSessions
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Active sessions belonging to the authenticated user.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/me/sessions/{sessionID}:
+    delete:
+      operationId: revokeSession
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: sessionID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  requestBodies:
+    Register:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/RegisterRequest' }
+    Login:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/LoginRequest' }
+    Refresh:
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/RefreshRequest' }
+    Email:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/EmailRequest' }
+    Token:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/TokenRequest' }
+    ResetPassword:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ResetPasswordRequest' }
+    ChangePassword:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+  responses:
+    UserCreated:
+      description: User created.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { $ref: '#/components/schemas/User' }
+    User: 
+      description: Public user profile.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { $ref: '#/components/schemas/User' }
+    Login:
+      description: Access token response; refresh token is set as an HttpOnly cookie.
+      headers:
+        Set-Cookie: { schema: { type: string } }
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { $ref: '#/components/schemas/LoginResponse' }
+    Message:
+      description: Operation result.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Message' }
+    ValidationError:
+      description: Invalid request.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Invalid request
+              fields: { email: Invalid email address }
+    InvalidCredentials:
+      description: Invalid email or password.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: INVALID_CREDENTIALS, message: Invalid email or password } }
+    Unauthorized:
+      description: Missing, invalid, expired, or revoked credentials.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Authenticated but not authorized.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Resource already exists.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Too many requests.
+      headers:
+        Retry-After: { schema: { type: integer, format: int32 } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DependencyUnavailable:
+      description: Required dependency is unavailable.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email, maxLength: 320 }
+        password: { type: string, format: password, minLength: 12, maxLength: 128 }
+        name: { type: string, minLength: 1, maxLength: 100 }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email, maxLength: 320 }
+        password: { type: string, format: password, maxLength: 128 }
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        refresh_token: { type: string, minLength: 32, maxLength: 256 }
+    EmailRequest:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email, maxLength: 320 }
+    TokenRequest:
+      type: object
+      required: [token]
+      additionalProperties: false
+      properties:
+        token: { type: string, minLength: 32, maxLength: 256 }
+    ResetPasswordRequest:
+      type: object
+      required: [token, new_password]
+      additionalProperties: false
+      properties:
+        token: { type: string, minLength: 32, maxLength: 256 }
+        new_password: { type: string, format: password, minLength: 12, maxLength: 128 }
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      additionalProperties: false
+      properties:
+        current_password: { type: string, format: password, maxLength: 128 }
+        new_password: { type: string, format: password, minLength: 12, maxLength: 128 }
+    User:
+      type: object
+      required: [id, email, name, role, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+        role: { type: string, enum: [user, admin] }
+        email_verified_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    Session:
+      type: object
+      required: [id, device, ip, expires_at, last_used_at, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        device: { type: string }
+        ip: { type: string }
+        expires_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    LoginResponse:
+      type: object
+      required: [access_token, token_type, expires_in, user]
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: Bearer }
+        expires_in: { type: integer, format: int64, example: 900 }
+        user: { $ref: '#/components/schemas/User' }
+    Message:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            fields: { type: object, additionalProperties: { type: string } }
