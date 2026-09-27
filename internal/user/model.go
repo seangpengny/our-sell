@@ -29,6 +29,14 @@ type PublicUser struct {
 	CreatedAt       time.Time  `json:"created_at"`
 }
 
+type UserList struct {
+	Users      []PublicUser `json:"users"`
+	Total      int64        `json:"total"`
+	Page       int          `json:"page"`
+	PageSize   int          `json:"page_size"`
+	TotalPages int          `json:"total_pages"`
+}
+
 func (u User) Public() PublicUser {
 	return PublicUser{
 		ID:              u.ID,

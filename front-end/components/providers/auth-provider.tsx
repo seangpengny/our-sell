@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { authApi, ApiError, setAccessToken } from "@/lib/api";
 import type { LoginResponse, User } from "@/lib/types";
 
@@ -17,10 +18,20 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: Readonly<{ children: React.ReactNode }>) {
+  const pathname = usePathname();
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    const needsAuthBootstrap = pathname.startsWith("/app") || /\/marketplace\/[^/]+\/checkout$/.test(pathname);
+    if (!needsAuthBootstrap) {
+      setAccessToken(null);
+      const timeout = window.setTimeout(() => {
+        setUser(null);
+        setStatus("unauthenticated");
+      }, 0);
+      return () => window.clearTimeout(timeout);
+    }
     let active = true;
     authApi.refresh()
       .then((result) => {
@@ -35,7 +46,7 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
         setStatus("unauthenticated");
       });
     return () => { active = false; };
-  }, []);
+  }, [pathname]);
 
   const login = useCallback(async (email: string, password: string) => {
     const result = await authApi.login(email, password);

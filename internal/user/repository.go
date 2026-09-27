@@ -23,6 +23,13 @@ type Repository interface {
 	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 }
 
+type AdminRepository interface {
+	Repository
+	List(ctx context.Context, search, role string, limit, offset int32) ([]User, int64, error)
+	RevokeSessions(ctx context.Context, id uuid.UUID) error
+	UpdateRole(ctx context.Context, id uuid.UUID, role Role) (User, error)
+}
+
 type SQLRepository struct {
 	queries *sqlc.Queries
 }
@@ -66,6 +73,40 @@ func (r *SQLRepository) ByID(ctx context.Context, id uuid.UUID) (User, error) {
 		return User{}, fmt.Errorf("get user by ID: %w", err)
 	}
 	return fromSQLUser(row), nil
+}
+
+func (r *SQLRepository) List(ctx context.Context, search, role string, limit, offset int32) ([]User, int64, error) {
+	rows, err := r.queries.ListUsers(ctx, sqlc.ListUsersParams{Column1: search, Column2: role, Limit: limit, Offset: offset})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list users: %w", err)
+	}
+	total, err := r.queries.CountUsers(ctx, sqlc.CountUsersParams{Column1: search, Column2: role})
+	if err != nil {
+		return nil, 0, fmt.Errorf("count users: %w", err)
+	}
+	result := make([]User, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, fromSQLUser(row))
+	}
+	return result, total, nil
+}
+
+func (r *SQLRepository) UpdateRole(ctx context.Context, id uuid.UUID, role Role) (User, error) {
+	row, err := r.queries.UpdateUserRole(ctx, sqlc.UpdateUserRoleParams{ID: id, Role: string(role)})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, apperror.ErrNotFound
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("update user role: %w", err)
+	}
+	return fromSQLUser(row), nil
+}
+
+func (r *SQLRepository) RevokeSessions(ctx context.Context, id uuid.UUID) error {
+	if err := r.queries.RevokeAllSessions(ctx, id); err != nil {
+		return fmt.Errorf("revoke user sessions: %w", err)
+	}
+	return nil
 }
 
 func (r *SQLRepository) MarkEmailVerified(ctx context.Context, id uuid.UUID) error {

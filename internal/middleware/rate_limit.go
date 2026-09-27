@@ -30,11 +30,15 @@ return count
 
 func RateLimit(client *redis.Client, failOpen bool) fiber.Handler {
 	limits := map[string]rateLimit{
-		"/api/v1/auth/login":               {max: 10, window: 15 * time.Minute},
-		"/api/v1/auth/register":            {max: 5, window: 15 * time.Minute},
-		"/api/v1/auth/forgot-password":     {max: 5, window: 15 * time.Minute},
-		"/api/v1/auth/reset-password":      {max: 10, window: 15 * time.Minute},
-		"/api/v1/auth/resend-verification": {max: 5, window: 15 * time.Minute},
+		"/api/v1/auth/login":                          {max: 10, window: 15 * time.Minute},
+		"/api/v1/auth/register":                       {max: 5, window: 15 * time.Minute},
+		"/api/v1/auth/forgot-password":                {max: 5, window: 15 * time.Minute},
+		"/api/v1/auth/reset-password":                 {max: 10, window: 15 * time.Minute},
+		"/api/v1/auth/resend-verification":            {max: 5, window: 15 * time.Minute},
+		"/api/v1/auth/facebook/connect":               {max: 10, window: 15 * time.Minute},
+		"/api/v1/auth/facebook/callback":              {max: 20, window: 15 * time.Minute},
+		"/api/v1/facebook/connections":                {max: 20, window: time.Minute},
+		"/api/v1/marketplace/pages/:listingID/orders": {max: 10, window: 15 * time.Minute},
 	}
 	return func(c fiber.Ctx) error {
 		if client == nil {

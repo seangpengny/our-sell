@@ -9,4 +9,6 @@
 .DS_Store
 
 .playwright-cli
-
+node_modules/
+.vscode/
+output/

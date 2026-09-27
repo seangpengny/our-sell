@@ -9,12 +9,15 @@ import (
 
 	apiSpec "github.com/vtech/our-sell/api"
 	"github.com/vtech/our-sell/internal/auth"
+	"github.com/vtech/our-sell/internal/facebook"
 	"github.com/vtech/our-sell/internal/middleware"
 	"github.com/vtech/our-sell/internal/platform/apperror"
 	"github.com/vtech/our-sell/internal/platform/response"
+	"github.com/vtech/our-sell/internal/user"
+	"github.com/vtech/our-sell/internal/wallet"
 )
 
-func registerRoutes(app *fiber.App, deps Dependencies, authHandler *auth.Handler, tokenService *auth.TokenService) {
+func registerRoutes(app *fiber.App, deps Dependencies, authHandler *auth.Handler, userHandler *user.Handler, facebookHandler *facebook.Handler, walletHandler *wallet.Handler, tokenService *auth.TokenService) {
 	app.Use(middleware.RequestID())
 	app.Use(middleware.Logger(deps.Logger))
 	app.Use(middleware.Recovery(deps.Logger))
@@ -41,7 +44,11 @@ func registerRoutes(app *fiber.App, deps Dependencies, authHandler *auth.Handler
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
 	requireAuth := middleware.RequireAuth(tokenService)
+	requireAdmin := middleware.RequireRole(string(user.RoleAdmin))
 	auth.RegisterRoutes(v1, authHandler, requireAuth)
+	facebook.RegisterRoutes(v1, facebookHandler, requireAuth, requireAdmin)
+	wallet.RegisterRoutes(v1, walletHandler, requireAuth, requireAdmin)
+	user.RegisterRoutes(v1, userHandler, requireAuth, requireAdmin)
 
 	app.Use(func(c fiber.Ctx) error { return apperror.ErrNotFound })
 }

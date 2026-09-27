@@ -14,6 +14,7 @@ const (
 	CodeConflict              = "CONFLICT"
 	CodeRateLimited           = "RATE_LIMITED"
 	CodeDependencyUnavailable = "DEPENDENCY_UNAVAILABLE"
+	CodeInsufficientFunds     = "INSUFFICIENT_FUNDS"
 	CodeInternal              = "INTERNAL_ERROR"
 )
 
@@ -26,6 +27,7 @@ var (
 	ErrRateLimited           = &Error{Status: 429, Code: CodeRateLimited, Message: "Too many requests"}
 	ErrInvalidToken          = &Error{Status: 401, Code: CodeUnauthorized, Message: "Invalid or expired token"}
 	ErrDependencyUnavailable = &Error{Status: 503, Code: CodeDependencyUnavailable, Message: "A required service is temporarily unavailable"}
+	ErrInsufficientFunds     = &Error{Status: 402, Code: CodeInsufficientFunds, Message: "Your wallet balance is not sufficient for this purchase"}
 )
 
 type Error struct {

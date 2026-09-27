@@ -22,7 +22,7 @@ func CORS(allowedOrigins []string) fiber.Handler {
 			c.Set("Access-Control-Allow-Credentials", "true")
 		}
 		c.Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID")
-		c.Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+		c.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		if strings.EqualFold(c.Method(), fiber.MethodOptions) {
 			return c.SendStatus(fiber.StatusNoContent)
 		}

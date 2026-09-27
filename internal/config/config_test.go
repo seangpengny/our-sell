@@ -80,6 +80,13 @@ func TestLoadValidation(t *testing.T) {
 		t.Setenv("JWT_AUDIENCE", "our-sell-client")
 		t.Setenv("ACCESS_TOKEN_TTL", "15m")
 		t.Setenv("REFRESH_TOKEN_TTL", "720h")
+		t.Setenv("SMTP_HOST", "smtp.example.com")
+		t.Setenv("SMTP_USERNAME", "mailer@example.com")
+		t.Setenv("SMTP_PASSWORD", "password")
+		t.Setenv("SMTP_FROM", "no-reply@example.com")
+		t.Setenv("SMTP_TLS_MODE", "starttls")
+		t.Setenv("SMTP_TIMEOUT", "15s")
+		t.Setenv("EMAIL_VERIFICATION_URL", "http://localhost:3000/verify")
 
 		cfg, err := Load()
 		if err != nil {
@@ -90,6 +97,26 @@ func TestLoadValidation(t *testing.T) {
 		}
 		if cfg.AccessTokenTTL != 15*time.Minute {
 			t.Errorf("expected 15m access token TTL, got %v", cfg.AccessTokenTTL)
+		}
+		if cfg.SMTPFrom != "no-reply@example.com" || cfg.SMTPTimeout != 15*time.Second {
+			t.Errorf("unexpected SMTP config: from=%q timeout=%v", cfg.SMTPFrom, cfg.SMTPTimeout)
+		}
+	})
+
+	t.Run("production requires SMTP", func(t *testing.T) {
+		t.Setenv("APP_ENV", "production")
+		t.Setenv("COOKIE_SECURE", "true")
+		t.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/db?sslmode=disable")
+		t.Setenv("REDIS_URL", "redis://localhost:6379/0")
+		t.Setenv("JWT_SECRET", "super-secret-key-that-is-at-least-32-bytes-long")
+		t.Setenv("SMTP_HOST", "")
+		t.Setenv("SMTP_USERNAME", "")
+		t.Setenv("SMTP_PASSWORD", "")
+		t.Setenv("SMTP_FROM", "")
+
+		_, err := Load()
+		if err == nil || err.Error() != "SMTP_HOST is required in production" {
+			t.Errorf("expected production SMTP error, got %v", err)
 		}
 	})
 }

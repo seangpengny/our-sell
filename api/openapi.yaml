@@ -114,6 +114,365 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/User' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/facebook/connect:
+    post:
+      operationId: startFacebookConnect
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Facebook authorization URL. The URL is safe to redirect the current browser to.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FacebookConnectResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /api/v1/auth/facebook/callback:
+    get:
+      operationId: facebookCallback
+      security: []
+      description: Meta redirects here. The endpoint consumes the one-time state and redirects back to the fixed admin frontend URL.
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+        - { name: error_reason, in: query, schema: { type: string } }
+      responses:
+        '302': { description: Redirects to the admin Facebook accounts view. }
+  /api/v1/facebook/connections:
+    get:
+      operationId: listFacebookConnections
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Safe metadata for active Facebook connections owned by the current user.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/FacebookConnection' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/facebook/pages:
+    get:
+      operationId: listFacebookPages
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: connection_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Pages returned by Meta for the selected owned connection.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/FacebookPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/v1/facebook/page-inventory:
+    get:
+      operationId: listFacebookPageInventory
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: connection_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        '200':
+          description: Stored Facebook Page inventory belonging to the current user. Requires administrator access.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FacebookPageInventory' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/facebook/pages/{pageID}/listing:
+    put:
+      operationId: saveFacebookPageListing
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: pageID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FacebookListingInput' }
+      responses:
+        '200':
+          description: Saved marketplace listing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FacebookPageListing' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/v1/facebook/connections/{connectionID}/sync:
+    post:
+      operationId: syncFacebookConnection
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: connectionID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Facebook Pages synchronized into the inventory.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [page_count]
+                    properties:
+                      page_count: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/v1/marketplace/pages:
+    get:
+      operationId: listPublishedFacebookPageListings
+      security: []
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        '200':
+          description: Published Facebook Page marketplace listings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FacebookPageInventory' }
+  /api/v1/marketplace/pages/{listingID}:
+    get:
+      operationId: getPublishedFacebookPageListing
+      security: []
+      parameters:
+        - name: listingID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Published Facebook Page marketplace listing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FacebookPublicListing' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/marketplace/pages/{listingID}/orders:
+    post:
+      operationId: createMarketplaceOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: listingID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MarketplaceOrderInput' }
+      responses:
+        '201':
+          description: Listing reservation and order created. Wallet orders are credited from an available balance hold atomically.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/MarketplaceOrder' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409':
+          description: The listing is already reserved, sold, or unavailable.
+          content:
+              application/json:
+                schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/wallet:
+    get:
+      operationId: getWallet
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current authenticated user wallet summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Wallet' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/wallet/ledger:
+    get:
+      operationId: listWalletLedger
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Immutable wallet movement history.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/WalletLedgerResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/wallet/topups:
+    post:
+      operationId: createWalletTopup
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WalletTopupInput' }
+      responses:
+        '201':
+          description: Dynamic KHQR created for the authenticated customer.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/WalletTopup' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /api/v1/wallet/topups/{topupID}:
+    get:
+      operationId: getWalletTopup
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: topupID, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Top-up status after server-side Bakong verification.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/WalletTopup' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/payments/bakong/webhook:
+    post:
+      operationId: verifyBakongTopupWebhook
+      security: []
+      description: Optional signed internal relay. The API still verifies the payment against Bakong before crediting the wallet.
+      parameters:
+        - name: X-Bakong-Webhook-Secret
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reference: { type: string }
+                qr_md5: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /api/v1/admin/wallet/topups:
+    get:
+      operationId: adminListWalletTopups
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: search, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, schema: { type: string, enum: [pending_payment, confirmed, failed, expired, reversed] } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Wallet top-up operations view. Requires the admin role.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/AdminWalletTopupResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/facebook/connections/{connectionID}:
+    delete:
+      operationId: disconnectFacebook
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: connectionID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { $ref: '#/components/responses/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '400': { $ref: '#/components/responses/ValidationError' }
   /api/v1/me/sessions:
     get:
       operationId: listSessions
@@ -143,6 +502,55 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Message' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/admin/users:
+    get:
+      operationId: adminListUsers
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: role
+          in: query
+          schema: { type: string, enum: [user, admin] }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Paginated user directory. Requires the admin role.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/UserList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/admin/users/{userID}/role:
+    patch:
+      operationId: adminUpdateUserRole
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRoleRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 components:
   securitySchemes:
@@ -312,6 +720,12 @@ components:
       properties:
         current_password: { type: string, format: password, maxLength: 128 }
         new_password: { type: string, format: password, minLength: 12, maxLength: 128 }
+    UpdateRoleRequest:
+      type: object
+      required: [role]
+      additionalProperties: false
+      properties:
+        role: { type: string, enum: [user, admin] }
     User:
       type: object
       required: [id, email, name, role, created_at]
@@ -322,6 +736,17 @@ components:
         role: { type: string, enum: [user, admin] }
         email_verified_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
+    UserList:
+      type: object
+      required: [users, total, page, page_size, total_pages]
+      properties:
+        users:
+          type: array
+          items: { $ref: '#/components/schemas/User' }
+        total: { type: integer, format: int64 }
+        page: { type: integer }
+        page_size: { type: integer }
+        total_pages: { type: integer }
     Session:
       type: object
       required: [id, device, ip, expires_at, last_used_at, created_at]
@@ -332,6 +757,187 @@ components:
         expires_at: { type: string, format: date-time }
         last_used_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
+    FacebookConnectResponse:
+      type: object
+      required: [authorization_url]
+      properties:
+        authorization_url: { type: string, format: uri }
+    FacebookConnection:
+      type: object
+      required: [id, facebook_account_id, name, connected_at]
+      properties:
+        id: { type: string, format: uuid }
+        facebook_account_id: { type: string }
+        name: { type: string }
+        connected_at: { type: string, format: date-time }
+        token_expires_at: { type: string, format: date-time, nullable: true }
+    FacebookPage:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    FacebookListingInput:
+      type: object
+      required: [title, subtitle, description, price_usd, currency, delivery_window, status, featured, sort_order]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 255 }
+        subtitle: { type: string, minLength: 1, maxLength: 255 }
+        description: { type: string, maxLength: 5000 }
+        price_usd: { type: number, format: double, minimum: 0, example: 6.00 }
+        currency: { type: string, enum: [USD], example: USD }
+        delivery_window: { type: string, minLength: 1, maxLength: 120 }
+        status: { type: string, enum: [draft, pending_review, published, unlisted] }
+        featured: { type: boolean }
+        sort_order: { type: integer, minimum: 0 }
+    FacebookPageListing:
+      allOf:
+        - $ref: '#/components/schemas/FacebookListingInput'
+        - type: object
+          required: [id, page_id, created_at, updated_at]
+          properties:
+            id: { type: string, format: uuid }
+            page_id: { type: string, format: uuid }
+            published_at: { type: string, format: date-time, nullable: true }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+    FacebookPageInventoryItem:
+      type: object
+      required: [id, facebook_page_id, name, connection_id, connection_name]
+      properties:
+        id: { type: string, format: uuid }
+        facebook_page_id: { type: string }
+        name: { type: string }
+        connection_id: { type: string, format: uuid }
+        connection_name: { type: string }
+        last_synced_at: { type: string, format: date-time, nullable: true }
+        listing: { $ref: '#/components/schemas/FacebookPageListing' }
+    FacebookPageInventory:
+      type: object
+      required: [pages, total, page, page_size, total_pages]
+      properties:
+        pages:
+          type: array
+          items: { $ref: '#/components/schemas/FacebookPageInventoryItem' }
+        total: { type: integer, format: int64 }
+        page: { type: integer }
+        page_size: { type: integer }
+        total_pages: { type: integer }
+    FacebookPublicListing:
+      allOf:
+        - $ref: '#/components/schemas/FacebookPageListing'
+        - type: object
+          required: [facebook_page_id, page_name]
+          properties:
+            facebook_page_id: { type: string }
+            page_name: { type: string }
+    MarketplaceOrderInput:
+      type: object
+      required: [buyer_note, payment_method, terms_accepted]
+      additionalProperties: false
+      properties:
+        buyer_note: { type: string, maxLength: 2000 }
+        payment_method: { type: string, enum: [wallet] }
+        terms_accepted: { type: boolean, enum: [true] }
+    MarketplaceOrder:
+      type: object
+      required: [id, reference, listing_id, buyer_user_id, amount_usd, currency, status, reservation_expires_at, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        listing_id: { type: string, format: uuid }
+        buyer_user_id: { type: string, format: uuid }
+        buyer_note: { type: string }
+        amount_usd: { type: number, format: double, minimum: 0, example: 6.00 }
+        currency: { type: string, enum: [USD] }
+        payment_method: { type: string, enum: [wallet, bakong, card, usdt] }
+        status: { type: string, enum: [pending_payment, payment_failed, paid, transfer_pending, completed, cancelled, expired] }
+        reservation_expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        paid_at: { type: string, format: date-time, nullable: true }
+        completed_at: { type: string, format: date-time, nullable: true }
+    Wallet:
+      type: object
+      required: [id, user_id, currency, available_amount, held_amount, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        currency: { type: string, enum: [USD] }
+        available_amount: { type: number, format: double, minimum: 0, example: 25.00 }
+        held_amount: { type: number, format: double, minimum: 0, example: 6.00 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    WalletTopupInput:
+      type: object
+      required: [amount_usd]
+      additionalProperties: false
+      properties:
+        amount_usd: { type: number, format: double, minimum: 1, example: 10.00 }
+    WalletTopup:
+      type: object
+      required: [id, wallet_id, user_id, reference, amount_usd, currency, qr_payload, qr_md5, status, expires_at, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        wallet_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        reference: { type: string }
+        amount_usd: { type: number, format: double, minimum: 0, example: 10.00 }
+        currency: { type: string, enum: [USD] }
+        qr_payload: { type: string, description: Dynamic KHQR payload to render as a QR code. }
+        qr_md5: { type: string, description: QR MD5 used for server-side transaction verification. }
+        provider_transaction_id: { type: string }
+        status: { type: string, enum: [pending_payment, confirmed, failed, expired, reversed] }
+        failure_reason: { type: string }
+        expires_at: { type: string, format: date-time }
+        paid_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    WalletLedgerEntry:
+      type: object
+      required: [id, wallet_id, user_id, entry_type, reference, available_delta_usd, held_delta_usd, available_balance_usd, held_balance_usd, description, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        wallet_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        entry_type: { type: string, enum: [topup_confirmed, topup_reversed, order_hold, order_release, order_spent, admin_adjustment] }
+        reference: { type: string }
+        available_delta_usd: { type: number, format: double }
+        held_delta_usd: { type: number, format: double }
+        available_balance_usd: { type: number, format: double, minimum: 0 }
+        held_balance_usd: { type: number, format: double, minimum: 0 }
+        description: { type: string }
+        created_at: { type: string, format: date-time }
+    WalletLedgerResult:
+      type: object
+      required: [entries, page, page_size, has_more]
+      properties:
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/WalletLedgerEntry' }
+        page: { type: integer }
+        page_size: { type: integer }
+        has_more: { type: boolean }
+    AdminWalletTopup:
+      allOf:
+        - $ref: '#/components/schemas/WalletTopup'
+        - type: object
+          required: [user_name, user_email]
+          properties:
+            user_name: { type: string }
+            user_email: { type: string, format: email }
+    AdminWalletTopupResult:
+      type: object
+      required: [topups, total, page, page_size, total_pages]
+      properties:
+        topups:
+          type: array
+          items: { $ref: '#/components/schemas/AdminWalletTopup' }
+        total: { type: integer, format: int64 }
+        page: { type: integer }
+        page_size: { type: integer }
+        total_pages: { type: integer }
     LoginResponse:
       type: object
       required: [access_token, token_type, expires_in, user]

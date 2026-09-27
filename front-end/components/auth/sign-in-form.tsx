@@ -25,7 +25,8 @@ export function SignInForm() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push("/app");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next?.startsWith("/") ? next : "/app");
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : "We couldn’t sign you in. Check your details and try again.");
     } finally { setLoading(false); }

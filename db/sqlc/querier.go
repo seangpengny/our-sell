@@ -12,29 +12,68 @@ import (
 )
 
 type Querier interface {
+	ConfirmWalletTopup(ctx context.Context, arg ConfirmWalletTopupParams) (ConfirmWalletTopupRow, error)
+	CountFacebookPageInventory(ctx context.Context, arg CountFacebookPageInventoryParams) (int64, error)
+	CountPublishedFacebookPageListings(ctx context.Context, dollar_1 string) (int64, error)
+	CountUsers(ctx context.Context, arg CountUsersParams) (int64, error)
+	CountWalletTopupsAdmin(ctx context.Context, arg CountWalletTopupsAdminParams) (int64, error)
+	CreateMarketplaceOrder(ctx context.Context, arg CreateMarketplaceOrderParams) (CreateMarketplaceOrderRow, error)
 	CreatePasswordResetToken(ctx context.Context, arg CreatePasswordResetTokenParams) error
 	CreateSession(ctx context.Context, arg CreateSessionParams) error
 	CreateSessionToken(ctx context.Context, arg CreateSessionTokenParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateVerificationToken(ctx context.Context, arg CreateVerificationTokenParams) error
+	CreateWalletMarketplaceOrder(ctx context.Context, arg CreateWalletMarketplaceOrderParams) (CreateWalletMarketplaceOrderRow, error)
+	CreateWalletTopup(ctx context.Context, arg CreateWalletTopupParams) (CreateWalletTopupRow, error)
+	CreditWallet(ctx context.Context, arg CreditWalletParams) (CreditWalletRow, error)
+	DeleteFacebookConnection(ctx context.Context, arg DeleteFacebookConnectionParams) error
+	EnsureWallet(ctx context.Context, arg EnsureWalletParams) (EnsureWalletRow, error)
+	GetFacebookConnection(ctx context.Context, arg GetFacebookConnectionParams) (FacebookConnection, error)
+	GetFacebookPageForUser(ctx context.Context, arg GetFacebookPageForUserParams) (GetFacebookPageForUserRow, error)
+	GetMarketplaceOrder(ctx context.Context, id uuid.UUID) (GetMarketplaceOrderRow, error)
 	GetPasswordResetToken(ctx context.Context, tokenHash []byte) (PasswordResetToken, error)
+	GetPublishedFacebookPageListing(ctx context.Context, id uuid.UUID) (GetPublishedFacebookPageListingRow, error)
+	GetPublishedListingPrice(ctx context.Context, id uuid.UUID) (float64, error)
 	GetSessionToken(ctx context.Context, tokenHash []byte) (GetSessionTokenRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetVerificationToken(ctx context.Context, tokenHash []byte) (EmailVerificationToken, error)
+	GetWallet(ctx context.Context, userID uuid.UUID) (GetWalletRow, error)
+	GetWalletAvailableBalance(ctx context.Context, userID uuid.UUID) (float64, error)
+	GetWalletForUpdate(ctx context.Context, id uuid.UUID) (GetWalletForUpdateRow, error)
+	GetWalletTopup(ctx context.Context, arg GetWalletTopupParams) (GetWalletTopupRow, error)
+	GetWalletTopupByID(ctx context.Context, id uuid.UUID) (GetWalletTopupByIDRow, error)
+	GetWalletTopupByMD5(ctx context.Context, qrMd5 string) (GetWalletTopupByMD5Row, error)
+	GetWalletTopupByReference(ctx context.Context, reference string) (GetWalletTopupByReferenceRow, error)
+	GetWalletTopupForUpdate(ctx context.Context, id uuid.UUID) (GetWalletTopupForUpdateRow, error)
+	InsertWalletLedgerEntry(ctx context.Context, arg InsertWalletLedgerEntryParams) error
 	InvalidatePasswordResetTokens(ctx context.Context, userID uuid.UUID) error
 	InvalidateVerificationTokens(ctx context.Context, userID uuid.UUID) error
+	LinkFacebookPageToConnection(ctx context.Context, arg LinkFacebookPageToConnectionParams) error
 	ListActiveSessions(ctx context.Context, userID uuid.UUID) ([]ListActiveSessionsRow, error)
+	ListFacebookConnections(ctx context.Context, userID uuid.UUID) ([]FacebookConnection, error)
+	ListFacebookPageInventory(ctx context.Context, arg ListFacebookPageInventoryParams) ([]ListFacebookPageInventoryRow, error)
+	ListPublishedFacebookPageListings(ctx context.Context, arg ListPublishedFacebookPageListingsParams) ([]ListPublishedFacebookPageListingsRow, error)
+	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
+	ListWalletLedger(ctx context.Context, arg ListWalletLedgerParams) ([]ListWalletLedgerRow, error)
+	ListWalletTopupsAdmin(ctx context.Context, arg ListWalletTopupsAdminParams) ([]ListWalletTopupsAdminRow, error)
 	MarkPasswordResetTokenUsed(ctx context.Context, arg MarkPasswordResetTokenUsedParams) error
 	MarkSessionTokenUsed(ctx context.Context, arg MarkSessionTokenUsedParams) error
 	MarkUserEmailVerified(ctx context.Context, arg MarkUserEmailVerifiedParams) error
 	MarkVerificationTokenUsed(ctx context.Context, arg MarkVerificationTokenUsedParams) error
+	MarkWalletTopupExpired(ctx context.Context, id uuid.UUID) error
+	MarkWalletTopupFailed(ctx context.Context, arg MarkWalletTopupFailedParams) error
+	ReleaseExpiredMarketplaceReservations(ctx context.Context) error
 	RevokeAllSessions(ctx context.Context, userID uuid.UUID) error
 	RevokeOtherSessions(ctx context.Context, arg RevokeOtherSessionsParams) error
 	RevokeSession(ctx context.Context, id uuid.UUID) error
 	RevokeUserSession(ctx context.Context, arg RevokeUserSessionParams) (pgconn.CommandTag, error)
 	UpdateSessionToken(ctx context.Context, arg UpdateSessionTokenParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
+	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error)
+	UpsertFacebookConnection(ctx context.Context, arg UpsertFacebookConnectionParams) (FacebookConnection, error)
+	UpsertFacebookPage(ctx context.Context, arg UpsertFacebookPageParams) (FacebookPage, error)
+	UpsertFacebookPageListing(ctx context.Context, arg UpsertFacebookPageListingParams) (UpsertFacebookPageListingRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -1,4 +1,14 @@
-import type { ApiEnvelope, ApiErrorPayload, ApiMessage, LoginResponse, Session, User } from "@/lib/types";
+import type {
+  ApiEnvelope,
+  ApiErrorPayload,
+  ApiMessage,
+  LoginResponse,
+  Session,
+  User,
+  Wallet,
+  WalletLedgerResult,
+  WalletTopup,
+} from "@/lib/types";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080").replace(/\/$/, "");
 
@@ -82,6 +92,129 @@ export async function refreshAccessToken(): Promise<LoginResponse> {
   }
   return refreshPromise;
 }
+
+export interface PublicPageListingBase {
+  id: string;
+  page_id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  price_usd: number;
+  currency: string;
+  delivery_window: string;
+  status: "published";
+  featured: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  published_at?: string | null;
+}
+
+export interface PublicPageListing extends PublicPageListingBase {
+  facebook_page_id: string;
+  page_name: string;
+}
+
+export interface PublicPageListingResult {
+  pages: Array<{
+    id: string;
+    facebook_page_id: string;
+    name: string;
+    listing: PublicPageListingBase;
+  }>;
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface MarketplaceOrderInput {
+  buyer_note: string;
+  payment_method: "wallet" | "bakong" | "card" | "usdt";
+  terms_accepted: boolean;
+}
+
+export interface MarketplaceOrder {
+  id: string;
+  reference: string;
+  listing_id: string;
+  buyer_user_id: string;
+  buyer_note?: string;
+  amount_usd: number;
+  currency: string;
+  payment_method?: string;
+  status: "pending_payment" | "payment_failed" | "paid" | "transfer_pending" | "completed" | "cancelled" | "expired";
+  reservation_expires_at: string;
+  created_at: string;
+  updated_at: string;
+  paid_at?: string | null;
+  completed_at?: string | null;
+}
+
+export const marketplaceApi = {
+  async listings(params: { search?: string; page?: number; pageSize?: number } = {}) {
+    const query = new URLSearchParams({
+      page: String(params.page ?? 1),
+      page_size: String(params.pageSize ?? 100),
+    });
+    if (params.search?.trim()) query.set("search", params.search.trim());
+    const { data } = await request<ApiEnvelope<PublicPageListingResult>>(
+      `/api/v1/marketplace/pages?${query.toString()}`,
+    );
+    return data;
+  },
+
+  async listing(id: string) {
+    const { data } = await request<ApiEnvelope<PublicPageListing>>(
+      `/api/v1/marketplace/pages/${encodeURIComponent(id)}`,
+    );
+    return data;
+  },
+
+  async createOrder(listingId: string, input: MarketplaceOrderInput) {
+    const { data } = await request<ApiEnvelope<MarketplaceOrder>>(
+      `/api/v1/marketplace/pages/${encodeURIComponent(listingId)}/orders`,
+      { method: "POST", body: JSON.stringify(input) },
+      true,
+    );
+    return data;
+  },
+};
+
+export const walletApi = {
+  async wallet() {
+    const { data } = await request<ApiEnvelope<Wallet>>("/api/v1/wallet", undefined, true);
+    return data;
+  },
+
+  async ledger(page = 1, pageSize = 20) {
+    const query = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+    const { data } = await request<ApiEnvelope<WalletLedgerResult>>(
+      `/api/v1/wallet/ledger?${query.toString()}`,
+      undefined,
+      true,
+    );
+    return data;
+  },
+
+  async createTopup(amountUsd: number) {
+    const { data } = await request<ApiEnvelope<WalletTopup>>(
+      "/api/v1/wallet/topups",
+      { method: "POST", body: JSON.stringify({ amount_usd: amountUsd }) },
+      true,
+    );
+    return data;
+  },
+
+  async topup(id: string) {
+    const { data } = await request<ApiEnvelope<WalletTopup>>(
+      `/api/v1/wallet/topups/${encodeURIComponent(id)}`,
+      undefined,
+      true,
+    );
+    return data;
+  },
+};
 
 export const authApi = {
   async login(email: string, password: string) {

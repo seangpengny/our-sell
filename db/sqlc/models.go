@@ -39,6 +39,73 @@ type EmailVerificationToken struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type FacebookConnection struct {
+	ID                   uuid.UUID          `json:"id"`
+	UserID               uuid.UUID          `json:"user_id"`
+	FacebookUserID       string             `json:"facebook_user_id"`
+	FacebookUserName     string             `json:"facebook_user_name"`
+	EncryptedAccessToken []byte             `json:"encrypted_access_token"`
+	TokenExpiresAt       pgtype.Timestamptz `json:"token_expires_at"`
+	Scopes               string             `json:"scopes"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	RevokedAt            pgtype.Timestamptz `json:"revoked_at"`
+}
+
+type FacebookPage struct {
+	ID             uuid.UUID          `json:"id"`
+	FacebookPageID string             `json:"facebook_page_id"`
+	Name           string             `json:"name"`
+	Category       pgtype.Text        `json:"category"`
+	PictureUrl     pgtype.Text        `json:"picture_url"`
+	IsActive       bool               `json:"is_active"`
+	LastSyncedAt   pgtype.Timestamptz `json:"last_synced_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type FacebookPageConnection struct {
+	PageID       uuid.UUID          `json:"page_id"`
+	ConnectionID uuid.UUID          `json:"connection_id"`
+	LastSeenAt   pgtype.Timestamptz `json:"last_seen_at"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+type FacebookPageListing struct {
+	ID             uuid.UUID          `json:"id"`
+	PageID         uuid.UUID          `json:"page_id"`
+	SellerUserID   uuid.UUID          `json:"seller_user_id"`
+	Title          string             `json:"title"`
+	Subtitle       string             `json:"subtitle"`
+	Description    string             `json:"description"`
+	PriceUsd       pgtype.Numeric     `json:"price_usd"`
+	Currency       string             `json:"currency"`
+	DeliveryWindow string             `json:"delivery_window"`
+	Status         string             `json:"status"`
+	Featured       bool               `json:"featured"`
+	SortOrder      int32              `json:"sort_order"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+}
+
+type MarketplaceOrder struct {
+	ID                   uuid.UUID          `json:"id"`
+	Reference            string             `json:"reference"`
+	ListingID            uuid.UUID          `json:"listing_id"`
+	BuyerUserID          pgtype.UUID        `json:"buyer_user_id"`
+	AmountUsd            pgtype.Numeric     `json:"amount_usd"`
+	Currency             string             `json:"currency"`
+	PaymentMethod        string             `json:"payment_method"`
+	Status               string             `json:"status"`
+	ReservationExpiresAt pgtype.Timestamptz `json:"reservation_expires_at"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	PaidAt               pgtype.Timestamptz `json:"paid_at"`
+	CompletedAt          pgtype.Timestamptz `json:"completed_at"`
+	BuyerNote            string             `json:"buyer_note"`
+}
+
 type PasswordResetToken struct {
 	ID        uuid.UUID          `json:"id"`
 	UserID    uuid.UUID          `json:"user_id"`
@@ -57,4 +124,47 @@ type User struct {
 	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Wallet struct {
+	ID              uuid.UUID          `json:"id"`
+	UserID          uuid.UUID          `json:"user_id"`
+	Currency        string             `json:"currency"`
+	AvailableAmount pgtype.Numeric     `json:"available_amount"`
+	HeldAmount      pgtype.Numeric     `json:"held_amount"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type WalletLedgerEntry struct {
+	ID                  uuid.UUID          `json:"id"`
+	WalletID            uuid.UUID          `json:"wallet_id"`
+	UserID              uuid.UUID          `json:"user_id"`
+	EntryType           string             `json:"entry_type"`
+	Reference           string             `json:"reference"`
+	AvailableDeltaUsd   pgtype.Numeric     `json:"available_delta_usd"`
+	HeldDeltaUsd        pgtype.Numeric     `json:"held_delta_usd"`
+	AvailableBalanceUsd pgtype.Numeric     `json:"available_balance_usd"`
+	HeldBalanceUsd      pgtype.Numeric     `json:"held_balance_usd"`
+	Description         string             `json:"description"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+}
+
+type WalletTopup struct {
+	ID                    uuid.UUID          `json:"id"`
+	WalletID              uuid.UUID          `json:"wallet_id"`
+	UserID                uuid.UUID          `json:"user_id"`
+	Reference             string             `json:"reference"`
+	AmountUsd             pgtype.Numeric     `json:"amount_usd"`
+	Currency              string             `json:"currency"`
+	QrPayload             string             `json:"qr_payload"`
+	QrMd5                 string             `json:"qr_md5"`
+	ProviderTransactionID pgtype.Text        `json:"provider_transaction_id"`
+	Status                string             `json:"status"`
+	FailureReason         string             `json:"failure_reason"`
+	ResolutionNote        string             `json:"resolution_note"`
+	ExpiresAt             pgtype.Timestamptz `json:"expires_at"`
+	PaidAt                pgtype.Timestamptz `json:"paid_at"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
 }

@@ -59,6 +59,8 @@ go run ./cmd/api
 
 The API is then available at http://localhost:8080.
 
+The administrator console lives in `admin/`. Run it separately with `npm install && npm run dev`; it uses the same API and is available at the default Next.js URL, http://localhost:3000.
+
 To run the complete local stack in containers:
 
 ~~~bash
@@ -90,9 +92,14 @@ The Compose file intentionally does not run migrations automatically. Run migrat
 - COOKIE_SECURE, COOKIE_SAMESITE, COOKIE_DOMAIN: refresh-cookie policy. Production requires COOKIE_SECURE=true.
 - DB_MAX_CONNS, DB_MIN_CONNS, DB_MAX_CONN_LIFETIME, DB_MAX_CONN_IDLE_TIME, DB_HEALTH_CHECK_PERIOD: pool controls.
 - REQUEST_BODY_LIMIT: global request body cap, default 1 MiB.
-- SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD: reserved for a real mailer adapter; the default build uses a token-blind development mailer.
+- SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM, SMTP_FROM_NAME: optional SMTP delivery settings. `SMTP_TLS_MODE` supports `starttls` (default), `tls` for implicit TLS, and `plain` only for unauthenticated local development SMTP servers. `SMTP_TIMEOUT` defaults to 10s.
+- EMAIL_VERIFICATION_URL and PASSWORD_RESET_URL: optional absolute frontend URLs; the mailer adds the one-time token as a `token` query parameter.
+- FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, FACEBOOK_REDIRECT_URI, FACEBOOK_FRONTEND_URL, META_GRAPH_API_VERSION, and FACEBOOK_TOKEN_ENCRYPTION_KEY: optional Facebook Login/Page connection settings. The encryption key must be a base64-encoded 32-byte AES key and is required with the other Facebook settings.
+- BAKONG_API_TOKEN, BAKONG_API_BASE_URL, BAKONG_ACCOUNT_ID, and the `BAKONG_*` merchant/top-up settings: optional USD wallet top-up integration. Leave the token and account ID blank to keep Bakong disabled; see [`docs/WALLET_BAKONG.md`](docs/WALLET_BAKONG.md) before configuring production credentials.
 
 Configuration is validated before opening external connections. No secrets are committed.
+
+For Gmail, use an app password rather than the account password and set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_TLS_MODE=starttls`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and optionally `SMTP_FROM`. Keep the credential in `.env` or a secret manager; never commit it.
 
 ## Database and sqlc
 
@@ -119,8 +126,10 @@ make test-integration # Testcontainers PostgreSQL/Redis smoke test
 make lint         # golangci-lint
 make fmt          # gofmt
 make sqlc         # regenerate db/sqlc
-make docker-up
-make docker-down
+make start        # build and start Docker services
+make stop         # stop and remove Docker services
+make status       # show Docker service status
+make logs         # follow API logs
 ~~~
 
 The normal verification set is:
@@ -164,7 +173,7 @@ GET /api/v1/me/sessions returns only safe metadata, and DELETE /api/v1/me/sessio
 
 Forgot-password always returns the same message for valid and unknown addresses. Reset and verification tokens are random, hashed, expiring, and single-use. Password reset, token consumption, and session revocation are one database transaction. Password change verifies the current hash and revokes other sessions while preserving the current session.
 
-The default mailer is token-blind and only represents a development integration boundary. Replace internal/email.LogMailer with an SMTP/provider adapter implementing email.Mailer; do not log tokens in the adapter.
+When SMTP_HOST is configured, verification and password-reset messages are sent through the SMTP mailer using multipart plain-text and HTML bodies. SMTP authentication is protected by STARTTLS by default, implicit TLS is available for port 465, and plaintext mode is rejected in production. With no SMTP host, local development uses a token-blind logger mailer. Tokens are never written to application logs.
 
 ### Cookies and CSRF
 
@@ -197,6 +206,26 @@ POST   /api/v1/auth/change-password
 GET    /api/v1/auth/me
 GET    /api/v1/me/sessions
 DELETE /api/v1/me/sessions/:sessionID
+GET    /api/v1/admin/users
+PATCH  /api/v1/admin/users/:userID/role
+POST   /api/v1/auth/facebook/connect
+GET    /api/v1/auth/facebook/callback
+GET    /api/v1/facebook/connections
+GET    /api/v1/facebook/pages?connection_id=:connectionID
+GET    /api/v1/facebook/page-inventory
+POST   /api/v1/facebook/connections/:connectionID/sync
+PUT    /api/v1/facebook/pages/:pageID/listing
+GET    /api/v1/marketplace/pages
+GET    /api/v1/marketplace/pages/:listingID
+POST   /api/v1/marketplace/pages/:listingID/orders (authenticated)
+GET    /api/v1/wallet (authenticated)
+GET    /api/v1/wallet/ledger (authenticated)
+POST   /api/v1/wallet/topups (authenticated)
+GET    /api/v1/wallet/topups/:topupID (authenticated)
+GET    /api/v1/admin/wallet/topups (admin)
+POST   /api/v1/admin/wallet/topups/:topupID/recheck (admin)
+POST   /api/v1/payments/bakong/webhook (signed relay)
+DELETE /api/v1/facebook/connections/:connectionID
 ~~~
 
 Responses use either { "data": ... } or { "message": ... }. Errors use { "error": { "code": ..., "message": ..., "fields": ... } }. Internal SQL, stack, path, hash, cookie, and token details are never sent to clients.

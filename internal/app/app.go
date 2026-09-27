@@ -14,11 +14,13 @@ import (
 	"github.com/vtech/our-sell/internal/auth"
 	"github.com/vtech/our-sell/internal/config"
 	"github.com/vtech/our-sell/internal/email"
+	"github.com/vtech/our-sell/internal/facebook"
 	"github.com/vtech/our-sell/internal/middleware"
 	"github.com/vtech/our-sell/internal/platform/apperror"
 	"github.com/vtech/our-sell/internal/platform/response"
 	"github.com/vtech/our-sell/internal/realtime"
 	"github.com/vtech/our-sell/internal/user"
+	"github.com/vtech/our-sell/internal/wallet"
 )
 
 type Dependencies struct {
@@ -45,12 +47,50 @@ func New(deps Dependencies) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	mailer := email.NewLogMailer(deps.Logger)
+	mailer, err := email.NewMailer(email.SMTPConfig{
+		Host:             deps.Config.SMTPHost,
+		Port:             deps.Config.SMTPPort,
+		Username:         deps.Config.SMTPUsername,
+		Password:         deps.Config.SMTPPassword,
+		From:             deps.Config.SMTPFrom,
+		FromName:         deps.Config.SMTPFromName,
+		TLSMode:          deps.Config.SMTPTLSMode,
+		Timeout:          deps.Config.SMTPTimeout,
+		VerificationURL:  deps.Config.EmailVerificationURL,
+		PasswordResetURL: deps.Config.PasswordResetURL,
+	}, deps.Logger)
+	if err != nil {
+		return nil, err
+	}
 	authService := auth.NewService(userRepository, authRepository, mailer, tokenService, deps.Config.VerificationTokenTTL, deps.Config.PasswordResetTokenTTL, deps.Config.RefreshTokenTTL)
 	authHandler := auth.NewHandler(authService, auth.CookieConfig{
 		Name: deps.Config.RefreshCookieName, Domain: deps.Config.CookieDomain, Secure: deps.Config.CookieSecure,
 		SameSite: deps.Config.CookieSameSite, MaxAge: int(deps.Config.RefreshTokenTTL.Seconds()),
 	})
+	userHandler := user.NewHandler(userService)
+	var facebookClient *facebook.Client
+	if deps.Config.FacebookAppID != "" {
+		facebookClient, err = facebook.NewClient(facebook.ClientConfig{
+			AppID: deps.Config.FacebookAppID, AppSecret: deps.Config.FacebookAppSecret,
+			RedirectURI: deps.Config.FacebookRedirectURI, Version: deps.Config.MetaGraphAPIVersion,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	var facebookCipher *facebook.TokenCipher
+	if len(deps.Config.FacebookTokenEncryptionKey) > 0 {
+		facebookCipher, err = facebook.NewTokenCipher(deps.Config.FacebookTokenEncryptionKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+	facebookRepository := facebook.NewRepository(queries)
+	facebookService := facebook.NewService(facebookRepository, facebookClient, facebookCipher, facebook.NewRedisStateStore(deps.Redis), deps.Config.FacebookFrontendURL, deps.Logger)
+	facebookHandler := facebook.NewHandler(facebookService)
+	walletRepository := wallet.NewRepository(queries, deps.Postgres)
+	walletService := wallet.NewService(walletRepository, wallet.NewProvider(deps.Config), deps.Config, deps.Logger)
+	walletHandler := wallet.NewHandler(walletService, deps.Config.BakongWebhookSecret)
 
 	app := fiber.New(fiber.Config{
 		AppName:          "our-sell-api",
@@ -67,7 +107,7 @@ func New(deps Dependencies) (*Application, error) {
 	})
 
 	hub := realtime.NewHub()
-	registerRoutes(app, deps, authHandler, tokenService)
+	registerRoutes(app, deps, authHandler, userHandler, facebookHandler, walletHandler, tokenService)
 	return &Application{Fiber: app, AuthService: authService, UserService: userService, RealtimeHub: hub, TokenService: tokenService}, nil
 }
 
